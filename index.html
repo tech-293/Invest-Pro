@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvestPro - Dashboard</title>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<style>
+:root{
+  --bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; 
+  --brand:#22c55e; --brand-dark:#16a34a; --danger:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:Inter, system-ui, -apple-system, sans-serif;
+  background:linear-gradient(135deg,#0f172a 0%, #1e293b 100%);
+  color:var(--text);
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px
+}
+.wrap{width:100%;max-width:520px}
+.logo{
+  display:flex;align-items:center;gap:12px;margin-bottom:24px;
+  justify-content:center
+}
+.logo img{width:48px;height:48px;border-radius:12px}
+.logo h1{font-size:24px;font-weight:700}
+.card{
+  background:var(--card);border:1px solid #334155;border-radius:16px;
+  padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.3)
+}
+h2{font-size:20px;margin-bottom:16px}
+input,select,button{
+  width:100%;padding:14px;border-radius:10px;border:1px solid #334155;
+  background:#0f172a;color:var(--text);font-size:15px;margin-top:10px
+}
+input:focus,select:focus{outline:2px solid var(--brand);border-color:var(--brand)}
+button{
+  background:var(--brand);color:#fff;border:none;font-weight:600;
+  cursor:pointer;margin-top:16px;transition:.2s
+}
+button:hover{background:var(--brand-dark)}
+button:active{transform:scale(.98)}
+.link{color:var(--brand);text-decoration:none;font-size:14px}
+.muted{color:var(--muted);font-size:14px}
+.balance{
+  font-size:32px;font-weight:700;margin:8px 0 20px
+}
+.plan-list{list-style:none;margin:16px 0}
+.plan-list li{
+  background:#0f172a;border:1px solid #334155;border-radius:10px;
+  padding:12px;margin-bottom:8px;font-size:14px
+}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.btn-danger{background:var(--danger)}
+#dashboard{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- AUTH SECTION -->
+<div id="auth" class="card">
+  <div class="logo">
+    <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Logo">
+    <h1>InvestPro</h1>
+  </div>
+  
+  <h2>Create Account</h2>
+  <input id="regEmail" type="email" placeholder="Email address">
+  <input id="regPass" type="password" placeholder="Password">
+  <button onclick="register()">Register</button>
+  <p class="muted" style="margin-top:14px">Already have an account? <a href="#" class="link" onclick="showLogin()">Login here</a></p>
+
+  <div id="loginBox" style="display:none;margin-top:20px">
+    <h2>Welcome Back</h2>
+    <input id="logEmail" type="email" placeholder="Email address">
+    <input id="logPass" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
+</div>
+
+<!-- DASHBOARD SECTION -->
+<div id="dashboard" class="card">
+  <div class="logo">
+    <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Logo">
+    <h1>InvestPro</h1>
+  </div>
+  
+  <div class="topbar">
+    <div>
+      <div class="muted">Account Balance</div>
+      <div class="balance">₦<span id="bal">0</span></div>
+    </div>
+    <button class="btn-danger" style="width:auto;padding:8px 16px" onclick="logout()">Logout</button>
+  </div>
+
+  <h2>Investment Plans</h2>
+  <ul class="plan-list">
+    <li><b>Starter Plan</b> - ₦5,000 → 5% daily for 10 days</li>
+    <li><b>Pro Plan</b> - ₦20,000 → 7% daily for 15 days</li>
+    <li><b>VIP Plan</b> - ₦50,000 → 10% daily for 20 days</li>
+  </ul>
+
+  <h2 style="margin-top:24px">Make Deposit</h2>
+  <select id="plan">
+    <option value="Starter-5000">Starter - ₦5,000</option>
+    <option value="Pro-20000">Pro - ₦20,000</option>
+    <option value="VIP-50000">VIP - ₦50,000</option>
+  </select>
+  <input id="amount" type="number" placeholder="Enter amount ₦">
+  <button onclick="deposit()">Deposit with Paystack</button>
+</div>
+
+</div>
+
+<script>
+// STEP 1: PASTE YOUR KEYS HERE
+const PAYSTACK_PUBLIC_KEY = 'PASTE_YOUR_PK_TEST_KEY_HERE'
+const TELEGRAM_BOT_TOKEN = 'your_bot_token'
+const TELEGRAM_CHAT_ID = 'your_chat_id'
+
+let currentUser = localStorage.getItem('user')
+
+function showLogin(){ 
+  document.getElementById('loginBox').style.display = 'block' 
+}
+
+function register(){
+  const email = document.getElementById('regEmail').value.trim()
+  const pass = document.getElementById('regPass').value
+  if(!email || !pass) return alert('Fill all fields')
+  if(localStorage.getItem('user_'+email)) return alert('User already exists')
+  
+  localStorage.setItem('user_'+email, JSON.stringify({email, pass, balance:0}))
+  localStorage.setItem('user', email)
+  currentUser = email
+  
+  showDashboard()
+  alert('Account created! Welcome to InvestPro')
+}
+
+function login(){
+  const email = document.getElementById('logEmail').value.trim()
+  const pass = document.getElementById('logPass').value
+  const user = JSON.parse(localStorage.getItem('user_'+email) || 'null')
+  if(user && user.pass === pass){
+    currentUser = email
+    localStorage.setItem('user', email)
+    showDashboard()
+  } else alert('Invalid email or password')
+}
+
+function logout(){
+  localStorage.removeItem('user')
+  document.getElementById('auth').style.display = 'block'
+  document.getElementById('dashboard').style.display = 'none'
+  document.getElementById('regEmail').value = ''
+  document.getElementById('regPass').value = ''
+  document.getElementById('logEmail').value = ''
+  document.getElementById('logPass').value = ''
+}
+
+function showDashboard(){
+  document.getElementById('auth').style.display = 'none'
+  document.getElementById('dashboard').style.display = 'block'
+  updateBalance()
+}
+
+function updateBalance(){
+  const user = JSON.parse(localStorage.getItem('user_'+currentUser))
+  document.getElementById('bal').innerText = user.balance.toLocaleString()
+}
+
+async function sendTelegram(msg){
+  try{
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`
+    await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id: TELEGRAM_CHAT_ID, text: msg})
+    })
+  }catch(e){ console.log('Telegram error:', e) }
+}
+
+function deposit(){
+  const [planName, defaultAmt] = document.getElementById('plan').value.split('-')
+  const amount = Number(document.getElementById('amount').value || defaultAmt)
+  if(!amount || amount < 100) return alert('Minimum ₦100')
+
+  sendTelegram(`🔔 Deposit attempt\nUser: ${currentUser}\nPlan: ${planName}\nAmount: ₦${amount.toLocaleString()}\nTime: ${new Date().toLocaleString()}`)
+
+  let handler = PaystackPop.setup({
+    key: PAYSTACK_PUBLIC_KEY,
+    email: currentUser,
+    amount: amount * 100,
+    currency: 'NGN',
+    callback: function(response){
+      let user = JSON.parse(localStorage.getItem('user_'+currentUser))
+      user.balance += amount
+      localStorage.setItem('user_'+currentUser, JSON.stringify(user))
+      updateBalance()
+      sendTelegram(`✅ Payment confirmed\nUser: ${currentUser}\nAmount: ₦${amount.toLocaleString()}\nRef: ${response.reference}\nNew Balance: ₦${user.balance.toLocaleString()}`)
+      alert('Payment successful! Balance updated.')
+    },
+    onClose: function(){ alert('Payment cancelled') }
+  })
+  handler.openIframe()
+}
+
+// Auto-login if user already saved
+if(currentUser) showDashboard()
+</script>
+</body>
+</html>
